@@ -49,18 +49,18 @@ def load_data(path):
         data = [record.split('\n') for record in data]
         data = [[l.split('\t') for l in record] for record in data]
         
-        sentense, pos, arc_labels, trans = [], [], [], []
+        sentence, pos, arc_labels, trans = [], [], [], []
         for record in data:
             min_len = min(len(l) for l in record)
             if min_len < 7:
                 print "record with invalid line"
                 print record
                 continue
-            sentense.append([l[1] for l in record])
+            sentence.append([l[1] for l in record])
             pos.append([l[4] for l in record])
             arc_labels.append([l[7] for l in record])
             trans.append([(int(l[0]), int(l[6])) for l in record])
-        return sentense, pos, arc_labels, trans
+        return sentence, pos, arc_labels, trans
 
 def load_vocab(path):
     with open(path, 'r') as f:
@@ -105,7 +105,7 @@ def generate_labels_from_arcs(record):
     return labels
 
 
-def create_features(parser, sentense, pos, arc_labels):
+def create_features(parser, sentence, pos, arc_labels):
     """create model inputs from parser's current configuration"""
 
     def n_top_nodes(l, n=3):
@@ -136,10 +136,10 @@ def create_features(parser, sentense, pos, arc_labels):
 
     # 18 pos and word feature_nodes
     pos_feat = get_value_by_node_index(pos, feature_nodes)
-    sentense_feat = get_value_by_node_index(sentense, feature_nodes)
+    sentence_feat = get_value_by_node_index(sentence, feature_nodes)
     # print [n.val for n in feature_nodes]
     
-    return sentense_feat + pos_feat
+    return sentence_feat + pos_feat
 
 
 class Preprocess:
@@ -154,7 +154,7 @@ class Preprocess:
         self.train = train
 
     def run(self):
-        sentenses, pos, arc_labels, trans = load_data(self.data_path)
+        sentences, pos, arc_labels, trans = load_data(self.data_path)
         if self.train:
             arc_class = write_class(arc_labels, self.arc_class_path)
             pos_class = write_class(pos, self.pos_class_path)
@@ -165,7 +165,7 @@ class Preprocess:
         
         print "convert words to indices"
         vocab_processor = get_vocab_processor(self.emb_path, self.vocab_path, self.train)
-        sentence_ids = transform_sentences(sentenses, vocab_processor)
+        sentence_ids = transform_sentences(sentences, vocab_processor)
 
         print "convert arc labels and pos tags to indices"
         arc_ids = transform_to_id(arc_labels, arc_class)
@@ -187,9 +187,9 @@ def get_vocab_processor(emb_path, vocab_path, create_new=False):
         vocab_processor = data_helper.get_vocab(vocab_path)
     return vocab_processor
 
-def transform_sentences(sentenses, vocab_processor):
+def transform_sentences(sentences, vocab_processor):
     sentence_ids = []
-    for s in sentenses:
+    for s in sentences:
         ids = np.array(list(vocab_processor.transform(s))).flatten().tolist()
         sentence_ids.append(ids)
     return sentence_ids
@@ -228,7 +228,7 @@ def create_data_for_model(data_path, sentence_ids, pos_ids, arc_ids, labels):
                 f.write(','.join(str(e) for e in row)+'\n')
             i += 1
             if i % 100 == 0:
-                print "created data from %s sentenses" % (i)
+                print "created data from %s sentences" % (i)
 
 
 if __name__ == '__main__':
