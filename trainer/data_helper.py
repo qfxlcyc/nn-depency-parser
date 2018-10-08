@@ -29,13 +29,15 @@ def load_from_gs(file_path):
             data.append(d)
     return data
 
+def load_json_from_gs(file_path):
+    with file_io.FileIO(file_path, mode='rb') as f:
+        data = json.load(f)
+    return data
 
-def get_data_meta(config):
-    # with open(config.meta_file, 'r') as f:
-    #     meta = json.load(f)
-    with file_io.FileIO(config.meta_file, mode='r') as f:
-        meta = json.load(f)
-    return meta
+def write_json_to_gs(data, file_path):
+    with file_io.FileIO(file_path, mode='wb') as f:
+        data = json.dump(data, f)
+    return data
 
 def load_word_embedding(file_path):
     embeddings = []
@@ -51,89 +53,37 @@ def load_word_embedding(file_path):
     embeddings.append([0.]*len(embeddings[0]))   # add embedding for Null
     return embeddings
 
-def get_vocab(vocab_path):
-    vocab_processor = learn.preprocessing.VocabularyProcessor.restore(vocab_path)
-    return vocab_processor
-
-def load_class(path):
-    with open(path, 'r') as f:
-        class_map = {}
-        for r in f.read().splitlines():
-            v, k = r.split(',', 1)
-            class_map[k] = int(v)
-    return class_map
-
-class Node:
-
-    def __init__(self, val=-1):
-        self.val = val
-        self.left_chidren = []
-        self.right_children = []
-
-    def add_child(self, child, left=False):
-        # the later a child is added, the more left/right-most the child is.
-        if left:
-            self.left_chidren.append(child)
-        else:
-            self.right_children.append(child)
-
-    def nth_child(self, n, left=False):
-        if left:
-            return self.left_chidren[-n] if n <= len(self.left_chidren) else Node()
-        else:
-            return self.right_children[-n] if n <= len(self.right_children) else Node()
-
-
-class Parser:
-
-    def __init__(self, buffer_size):
-        # auto add first two items (if any) to stack to skip the first two shift actions
-        self.stack = [Node()] + [Node(i) for i in xrange(min(2, buffer_size))]
-        self.buffer = [Node(i) for i in xrange(buffer_size-1, 1, -1)]
-        self.arc_set = []
-
-    def step(self, action):
-        """execuate action and update stack, buffer and arc-set"""
-        s, a, b = self.stack, self.arc_set, self.buffer
-        if action == 0: # shift
-            s.append(b.pop())
-        elif action == 1:   # left-arc
-            t = s.pop(len(s)-2)
-            c = s[-1]
-            a.append((t, c))
-            c.add_child(t, left=True)
-
-        else: #right-arc
-            t = s.pop()
-            c = s[-1]
-            a.append((t, c))
-            c.add_child(t, left=False)
 
 def get_record_parser(config):
-    meta = get_data_meta(config)
-    ld, wd, pd = meta["label_dim"], meta["word_feature_dim"], meta["pos_feature_dim"]
-
-    def convert_for_embedding_lookup(l, embed_size):
-        return [tf.cond(tf.greater(e, tf.constant(0)),
-            lambda: e, lambda: tf.constant(embed_size)) for e in l]
+    meta = load_json_from_gs(config.meta_file)
+    ld, wd, pd, ad = meta["label_dim"], meta["word_feature_dim"], meta["pos_feature_dim"], meta["arc_feature_dim"]
+    record_len = wd + pd + ld + ad + 1   # the first col is data id
+    # record_len = wd + ld + 1
 
     def parse(line):
-        parsed_line = tf.decode_csv(line, [[0] for _ in xrange(meta["input_dim"])])
-        label = parsed_line[-ld:]
-        word_features = convert_for_embedding_lookup(parsed_line[ : wd ], meta["embed_size"])
-        pos_features = convert_for_embedding_lookup(parsed_line[ wd : wd + pd ], meta["pos_class"])
+        parsed_line = tf.decode_csv(line, [[0] for _ in xrange(record_len)])
 
-        label = tf.convert_to_tensor(label)
-        word_features = tf.convert_to_tensor(word_features)
-        pos_features = tf.convert_to_tensor(pos_features)
-        return word_features, pos_features, label
+        label = tf.convert_to_tensor(parsed_line[-ld:])
+        word_feat = tf.convert_to_tensor(parsed_line[1:wd+1])
+        pos_feat = tf.convert_to_tensor(parsed_line[wd+1:wd+pd+1])
+        arc_feat = tf.convert_to_tensor(parsed_line[wd+pd+1:-ld])
+        return word_feat, pos_feat, arc_feat, label
+        # return word_feat, label
     return parse
 
-
-def get_batch_dataset(text_file, parser, config):
+def get_dataset(text_file, parser, config):
     num_threads = tf.constant(config.num_threads, dtype=tf.int32)
     dataset = tf.data.TextLineDataset(text_file).map(
-        parser, num_parallel_calls=num_threads).shuffle(config.capacity).repeat()
-
-    dataset = dataset.batch(config.batch_size)
+        parser, num_parallel_calls=num_threads)
     return dataset
+
+def get_batch_dataset(text_file, parser, config, is_train=True):
+    dataset = get_dataset(text_file, parser, config)
+    if is_train:
+        dataset = dataset.shuffle(config.capacity).batch(config.batch_size, drop_remainder=True).repeat()
+    else:
+        dataset = dataset.batch(config.batch_size, drop_remainder=True)
+    # dataset = dataset.batch(config.batch_size, drop_remainder=True).repeat()
+    return dataset
+
+
