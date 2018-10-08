@@ -4,41 +4,32 @@
 
 DATA_DIR="./data"
 
-ARC_CLASS_PATH="$DATA_DIR/arc_class.csv"
-POS_CLASS_PATH="$DATA_DIR/pos_class.csv"
-EMB_PATH="$DATA_DIR/en-cw.txt"
-VOCAB_PATH="$DATA_DIR/vocab"
+DEBUG_OUTPUT_FILE="$DATA_DIR/debug"
+DEBUG_INPUT_FILE="$DATA_DIR/tmp.gold.conll"
 
-TRAIN_OUTPUT_PATH="$DATA_DIR/train.csv"
-TRAIN_INPUT_PATH="$DATA_DIR/train.gold.conll"
+TRAIN_OUTPUT_FILE="$DATA_DIR/train"
+TRAIN_INPUT_FILE="$DATA_DIR/train.gold.conll"
 
-DEV_OUTPUT_PATH="$DATA_DIR/dev.csv"
-DEV_INPUT_PATH="$DATA_DIR/dev.gold.conll"
+DEV_OUTPUT_FILE="$DATA_DIR/dev"
+DEV_INPUT_FILE="$DATA_DIR/dev.gold.conll"
 
-TEST_OUTPUT_PATH="$DATA_DIR/test.csv"
-TEST_INPUT_PATH="$DATA_DIR/test.gold.conll"
+TEST_OUTPUT_FILE="$DATA_DIR/test"
+TEST_INPUT_FILE="$DATA_DIR/test.gold.conll"
+
+# echo "preprocess debugging data"
+# python -m preprocess --data_file $DEBUG_INPUT_FILE \
+#                      --output_file $DEBUG_OUTPUT_FILE \
+#                      --fit
 
 echo "preprocess training data"
-python -m preprocess --arc_class_path $ARC_CLASS_PATH \
-                     --pos_class_path $POS_CLASS_PATH \
-                     --data_path $TRAIN_INPUT_PATH \
-                     --emb_path $EMB_PATH \
-                     --vocab_path $VOCAB_PATH \
-                     --output_path $TRAIN_OUTPUT_PATH \
-                     --train
+python -m preprocess --data_file $TRAIN_INPUT_FILE \
+                     --output_file $TRAIN_OUTPUT_FILE \
+                     --fit
 
 echo "preprocess dev data"
-python -m preprocess --arc_class_path $ARC_CLASS_PATH \
-                     --pos_class_path $POS_CLASS_PATH \
-                     --data_path $DEV_INPUT_PATH \
-                     --emb_path $EMB_PATH \
-                     --vocab_path $VOCAB_PATH \
-                     --output_path $DEV_OUTPUT_PATH \
+python -m preprocess --data_file $DEV_INPUT_FILE \
+                     --output_file $DEV_OUTPUT_FILE \
 
 echo "preprocess test data"
-python -m preprocess --arc_class_path $ARC_CLASS_PATH \
-                     --pos_class_path $POS_CLASS_PATH \
-                     --data_path $TEST_INPUT_PATH \
-                     --emb_path $EMB_PATH \
-                     --vocab_path $VOCAB_PATH \
-                     --output_path $TEST_OUTPUT_PATH \
+python -m preprocess --data_file $TEST_INPUT_FILE \
+                     --output_file $TEST_OUTPUT_FILE \
