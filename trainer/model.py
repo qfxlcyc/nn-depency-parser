@@ -51,7 +51,7 @@ class ParsingModel(object):
 
     def build(self, config, batch):
 
-        w, p, a, y = batch.get_next()
+        self.qid, w, p, a, y = batch.get_next()
         # w, y = batch.get_next()
         l2_loss = 0.
 
@@ -94,8 +94,9 @@ class ParsingModel(object):
             loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y, logits=self.prob)
             self.loss = tf.reduce_mean(loss) + config.req_coeff / 2.0 * tf.reduce_sum(l2_loss)
 
-            self.y = tf.argmax(self.prob, 1)
-            correct_prediction = tf.equal(self.y, tf.argmax(y, 1))
+            self.y = tf.argmax(y, 1)
+            self.y_hat = tf.argmax(self.prob, 1)
+            correct_prediction = tf.equal(self.y_hat, self.y)
             self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, 'float'), name="accuracy")
 
 
