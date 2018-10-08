@@ -36,11 +36,12 @@ class Parser:
     # OOV, NULL = range(2)
     NULL = 0
 
-    def __init__(self, skip2shifts=True):
+    def __init__(self, skip2shifts=False):
         # auto add first two items (if any) to stack to skip the first two shift actions
         self.skip2shifts = skip2shifts
 
     def fit(self, buffer_size):
+        self.buffer_size = buffer_size
         if self.skip2shifts:
             self.stack = [Node()] + [Node(i) for i in xrange(min(2, buffer_size))]
             self.buffer = [Node(i) for i in reversed(xrange(2, buffer_size))]
@@ -52,19 +53,22 @@ class Parser:
     def step(self, label):
         """execuate action and update stack, buffer and arc-set"""
         action = self._get_direction_from_label(label)
-        if action == Parser.SHIFT: # shift
-            self.stack.append(self.buffer.pop())
-        elif action == Parser.LEFT:   # left-arc
-            end = self.stack.pop(-2)
-            start = self.stack[-1]
-            self.arc_set.append((start.val, end.val))
-            start.add_child(end, left=True)
+        try:
+            if action == Parser.SHIFT: # shift
+                self.stack.append(self.buffer.pop())
+            elif action == Parser.LEFT:   # left-arc
+                end = self.stack.pop(-2)
+                start = self.stack[-1]
+                self.arc_set.append((start.val, end.val))
+                start.add_child(end, left=True)
 
-        else: #right-arc
-            end = self.stack.pop()
-            start = self.stack[-1]
-            self.arc_set.append((start.val, end.val))
-            start.add_child(end, left=False)
+            else: #right-arc
+                end = self.stack.pop()
+                start = self.stack[-1]
+                self.arc_set.append((start.val, end.val))
+                start.add_child(end, left=False)
+        except:
+            print "Error in execuate action: {} from label: {} skip.".format(action, label)
 
     def end(self):
         return len(self.stack) == 1 and len(self.buffer) == 0
@@ -161,6 +165,12 @@ class Parser:
                 labels.append(label2id_dict[l])
                 i += 1
         return labels
+
+    def actions_to_arcs(self, actions):
+        self.fit(self.buffer_size)
+        for a in actions:
+            self.step(a)
+        return self.arc_set
 
     def serialize(self):
         return {
