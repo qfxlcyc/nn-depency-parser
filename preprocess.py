@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import argparse
 import trainer.data_helper as data_helper
-from parser import Parser
+from trainer.parser import Parser
 import os
 
 OOV = "--OOV--"
@@ -85,13 +85,13 @@ class Preprocess:
         print "convert words to indices"
         word2id_dict = create_word2id_dict(embed)
     
-        # print "add --OOV-- and --NULL-- to embeddings"
-        print "add --NULL-- to embeddings"
-        embed_size = len(embed[0].split(' '))
-        print embed_size
-        # added = ['\t'.join(["%s" % (word)] + [' '.join([str(0.)]*embed_size)]) + '\n' for word in [OOV, NULL]]
-        added = ['\t'.join(["%s" % (NULL)] + [' '.join([str(0.)]*embed_size)]) + '\n']
-        write_embed(config.embedding_file, added + embed)
+        # # print "add --OOV-- and --NULL-- to embeddings"
+        # print "add --NULL-- to embeddings"
+        # embed_size = len(embed[0].split(' '))
+        # print embed_size
+        # # added = ['\t'.join(["%s" % (word)] + [' '.join([str(0.)]*embed_size)]) + '\n' for word in [OOV, NULL]]
+        # added = ['\t'.join(["%s" % (NULL)] + [' '.join([str(0.)]*embed_size)]) + '\n']
+        # write_embed(config.embedding_file, added + embed)
 
         print "create id2word dict for prediction use"
         id2word_dict = {i:w for w, i in word2id_dict.items()}
